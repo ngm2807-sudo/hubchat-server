@@ -13,16 +13,18 @@ let rooms = {};
 function broadcastOnline(room) {
     if (!rooms[room]) return;
 
-    const count = rooms[room].length;
+    // ✅ FIX: chỉ đếm client đang OPEN, bỏ qua ghost connection
+    const activeClients = rooms[room].filter(c => c.readyState === WebSocket.OPEN);
+    const count = activeClients.length;
 
-    rooms[room].forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                type: "online_count",
-                count: count
-            }));
-        }
+    activeClients.forEach(client => {
+        client.send(JSON.stringify({
+            type: "online_count",
+            count: count
+        }));
     });
+
+    console.log(`[Room ${room}] Online: ${count}`);
 }
 
 wss.on("connection", function connection(ws) {
@@ -66,7 +68,7 @@ wss.on("connection", function connection(ws) {
             }
 
         } catch (err) {
-            console.log("Invalid message");
+            console.log("Invalid message:", err.message);
         }
 
     });
@@ -77,7 +79,7 @@ wss.on("connection", function connection(ws) {
             rooms[currentRoom] =
                 rooms[currentRoom].filter(client => client !== ws);
 
-            // Cập nhật lại online khi có người rời
+            // ✅ Cập nhật lại online khi có người rời
             broadcastOnline(currentRoom);
 
             // Nếu room trống thì xoá luôn cho sạch RAM
