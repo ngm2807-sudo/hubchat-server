@@ -7,6 +7,46 @@ console.log("Hub Chat Server running on port " + port);
 
 const OWNER_NAME = "AccphuBaeMinh";
 
+// =============================
+// BAD WORDS FILTER
+// =============================
+const BAD_WORDS = [
+    // English
+    "nigger","nigga","niga","n1gger","n1gga",
+    "fuck","fck","fuuck","fvck",
+    "shit","sh1t","sht",
+    "bitch","b1tch","bytch",
+    "dick","d1ck","dik",
+    "pussy","cunt","whore","wh0re",
+    "faggot","fag","f4g",
+    "retard","ret4rd","bastard",
+    "cock","c0ck","slut",
+    "ass","a55",
+    // Vietnamese
+    "địt","dit","đit",
+    "lồn","lon","l0n",
+    "cặc","cac","c4c",
+    "buồi","buoi",
+    "đụ","du",
+    "đéo","deo",
+    "mẹ mày","me may",
+    "bố mày","bo may",
+    "con mẹ","con me",
+    "đồ chó","thằng chó",
+    "óc chó",
+];
+
+function filterBadWords(text) {
+    let result = text;
+    for (const word of BAD_WORDS) {
+        // Escape regex special chars
+        const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(escaped, "gi");
+        result = result.replace(regex, "*".repeat(word.length));
+    }
+    return result;
+}
+
 // rooms[roomId] = [ws, ws, ...]
 let rooms = {};
 
@@ -61,7 +101,7 @@ wss.on("connection", function(ws) {
                 const payload = JSON.stringify({
                     type: "chat",
                     user: msg.user,
-                    text: msg.text
+                    text: filterBadWords(msg.text || "")
                 });
                 rooms[currentRoom].forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
