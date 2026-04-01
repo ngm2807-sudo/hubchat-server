@@ -142,7 +142,7 @@ wss.on("connection", function(ws) {
                 ws.send(JSON.stringify({
                     type:   "hwid_response",
                     target: target,
-                    hwid:   hwid || "NOT FOUND (user chưa join hoặc executor không hỗ trợ)",
+                    hwid:   hwid || "NOT FOUND (The user hasn't joined or the executor isn't supported.)",
                 }));
 
                 console.log(`[HWID] ${msg.requester} → ${target}: ${hwid || "NOT FOUND"}`);
