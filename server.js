@@ -5,7 +5,11 @@ const wss = new WebSocket.Server({ port });
 
 console.log("Hub Chat Server running on port " + port);
 
-const OWNER_NAME = "AccphuBaeMinh";
+// Danh sách những người có quyền đặc biệt
+const ADMINS = {
+    "owners": ["AccphuBaeMinh"], // Thêm tên Minh và bạn vào đây
+    "staffs": ["Staff_Name_1", "Staff_Name_2"] // Sau này có staff thì thêm vào đây
+};
 
 // =============================
 // BAD WORDS FILTER
@@ -98,11 +102,25 @@ wss.on("connection", function(ws) {
 
             // ---- CHAT ----
             if (msg.type === "chat" && currentRoom) {
+                let displayUser = msg.user;
+
+                // Kiểm tra nếu là Owner
+                if (ADMINS.owners.includes(msg.user)) {
+                    // Tag OWNER màu Xanh dương sáng (Blue) và Trắng
+                    displayUser = `${msg.user} <font color="rgb(0, 255, 255)">[</font><font color="rgb(255, 255, 255)">OWNER</font><font color="rgb(0, 255, 255)">]</font>`;
+                } 
+                // Kiểm tra nếu là Staff
+                else if (ADMINS.staffs.includes(msg.user)) {
+                    // Tag STAFF màu Vàng (đúng gu bạn thích)
+                    displayUser = `${msg.user} <font color="rgb(255, 255, 0)">[STAFF]</font>`;
+                }
+
                 const payload = JSON.stringify({
                     type: "chat",
-                    user: msg.user,
+                    user: displayUser,
                     text: filterBadWords(msg.text || "")
                 });
+
                 rooms[currentRoom].forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(payload);
