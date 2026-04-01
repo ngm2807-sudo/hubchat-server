@@ -5,11 +5,23 @@ const wss = new WebSocket.Server({ port });
 
 console.log("Hub Chat Server running on port " + port);
 
-// Danh sách những người có quyền đặc biệt
+// =============================
+// ROLE CONFIG
+// =============================
 const ADMINS = {
-    "owners": ["AccphuBaeMinh"], // Thêm tên Minh và bạn vào đây
-    "staffs": ["Staff_Name_1", "Staff_Name_2"] // Sau này có staff thì thêm vào đây
+    owners: ["AccphuBaeMinh"],
+    staffs: ["Staff_Name_1", "Staff_Name_2"],
 };
+
+function getRole(username) {
+    if (ADMINS.owners.includes(username)) return "owner";
+    if (ADMINS.staffs.includes(username)) return "staff";
+    return null;
+}
+
+function canRequestHWID(username) {
+    return ADMINS.owners.includes(username) || ADMINS.staffs.includes(username);
+}
 
 // =============================
 // BAD WORDS FILTER
@@ -27,11 +39,11 @@ const BAD_WORDS = [
     "cock","c0ck","slut",
     "ass","a55",
     // Vietnamese
-    "địt","dit","đit",
-    "lồn","lon","l0n",
+    "dịt","dit","đit",
+    "lồn","l0n",
     "cặc","cac","c4c",
     "buồi","buoi",
-    "đụ","du",
+    "đụ",
     "đéo","deo",
     "mẹ mày","me may",
     "bố mày","bo may",
@@ -43,7 +55,6 @@ const BAD_WORDS = [
 function filterBadWords(text) {
     let result = text;
     for (const word of BAD_WORDS) {
-        // Escape regex special chars
         const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escaped, "gi");
         result = result.replace(regex, "*".repeat(word.length));
@@ -51,10 +62,12 @@ function filterBadWords(text) {
     return result;
 }
 
-// rooms[roomId] = [ws, ws, ...]
-let rooms = {};
-
-// hwidMap[roomId][username] = "hwid_string"
+// =============================
+// STATE
+// =============================
+// rooms[roomId]  = [ws, ...]
+// hwidMap[roomId][username] = "hwid"
+let rooms   = {};
 let hwidMap = {};
 
 // =============================
@@ -62,11 +75,10 @@ let hwidMap = {};
 // =============================
 function broadcastOnline(room) {
     if (!rooms[room]) return;
-    const activeClients = rooms[room].filter(c => c.readyState === WebSocket.OPEN);
-    const count = activeClients.length;
-    activeClients.forEach(client => {
-        client.send(JSON.stringify({ type: "online_count", count }));
-    });
+    const active = rooms[room].filter(c => c.readyState === WebSocket.OPEN);
+    const count  = active.length;
+    const payload = JSON.stringify({ type: "online_count", count });
+    active.forEach(c => c.send(payload));
     console.log(`[Room ${room}] Online: ${count}`);
 }
 
@@ -86,15 +98,14 @@ wss.on("connection", function(ws) {
                 currentRoom = msg.room;
                 currentUser = msg.user || "Unknown";
 
-                if (!rooms[currentRoom]) rooms[currentRoom] = [];
+                if (!rooms[currentRoom])   rooms[currentRoom]   = [];
                 if (!hwidMap[currentRoom]) hwidMap[currentRoom] = {};
 
                 rooms[currentRoom].push(ws);
 
-                // Lưu HWID nếu có
                 if (msg.hwid) {
                     hwidMap[currentRoom][currentUser] = msg.hwid;
-                    console.log(`[HWID] ${currentUser} → ${msg.hwid}`);
+                    console.log(`[HWID saved] ${currentUser} → ${msg.hwid}`);
                 }
 
                 broadcastOnline(currentRoom);
@@ -102,51 +113,39 @@ wss.on("connection", function(ws) {
 
             // ---- CHAT ----
             if (msg.type === "chat" && currentRoom) {
-                let displayUser = msg.user;
-
-                // Kiểm tra nếu là Owner
-                if (ADMINS.owners.includes(msg.user)) {
-                    // Tag OWNER màu Xanh dương sáng (Blue) và Trắng
-                    displayUser = `${msg.user} <font color="rgb(0, 255, 255)">[</font><font color="rgb(255, 255, 255)">OWNER</font><font color="rgb(0, 255, 255)">]</font>`;
-                } 
-                // Kiểm tra nếu là Staff
-                else if (ADMINS.staffs.includes(msg.user)) {
-                    // Tag STAFF màu Vàng (đúng gu bạn thích)
-                    displayUser = `${msg.user} <font color="rgb(255, 255, 0)">[STAFF]</font>`;
-                }
+                const role    = getRole(msg.user);   // "owner" | "staff" | null
+                const filtered = filterBadWords(msg.text || "");
 
                 const payload = JSON.stringify({
                     type: "chat",
-                    user: displayUser,
-                    text: filterBadWords(msg.text || "")
+                    user: msg.user,      // tên sạch — client tự render tag
+                    role: role,          // client dùng để hiện [OWNER]/[STAFF] + màu
+                    text: filtered,
                 });
 
-                rooms[currentRoom].forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(payload);
-                    }
+                rooms[currentRoom].forEach(c => {
+                    if (c.readyState === WebSocket.OPEN) c.send(payload);
                 });
             }
 
-            // ---- HWID REQUEST (chỉ AccphuBaeMinh) ----
+            // ---- HWID REQUEST (owner & staff) ----
             if (msg.type === "hwid_request" && currentRoom) {
-                // Kiểm tra requester có phải owner không
-                if (msg.requester !== OWNER_NAME) {
+                if (!canRequestHWID(msg.requester)) {
                     ws.send(JSON.stringify({ type: "hwid_denied" }));
-                    console.log(`[HWID] Denied request from ${msg.requester}`);
+                    console.log(`[HWID] DENIED for ${msg.requester}`);
                     return;
                 }
 
                 const target = msg.target;
-                const hwid = hwidMap[currentRoom]?.[target] || null;
+                const hwid   = hwidMap[currentRoom]?.[target] || null;
 
                 ws.send(JSON.stringify({
-                    type: "hwid_response",
+                    type:   "hwid_response",
                     target: target,
-                    hwid: hwid || "NOT FOUND (user chưa join hoặc executor không hỗ trợ)"
+                    hwid:   hwid || "NOT FOUND (user chưa join hoặc executor không hỗ trợ)",
                 }));
 
-                console.log(`[HWID] ${OWNER_NAME} requested HWID of ${target} → ${hwid || "NOT FOUND"}`);
+                console.log(`[HWID] ${msg.requester} → ${target}: ${hwid || "NOT FOUND"}`);
             }
 
         } catch (err) {
@@ -158,14 +157,12 @@ wss.on("connection", function(ws) {
         if (currentRoom && rooms[currentRoom]) {
             rooms[currentRoom] = rooms[currentRoom].filter(c => c !== ws);
 
-            // Xoá HWID khi user rời
             if (currentUser && hwidMap[currentRoom]) {
                 delete hwidMap[currentRoom][currentUser];
             }
 
             broadcastOnline(currentRoom);
 
-            // Dọn room trống
             if (rooms[currentRoom].length === 0) {
                 delete rooms[currentRoom];
                 delete hwidMap[currentRoom];
