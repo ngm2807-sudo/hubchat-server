@@ -28,28 +28,29 @@ function canRequestHWID(username) {
 // =============================
 const BAD_WORDS = [
     // English
-    "nigger","nigga","niga","n1gger","n1gga",
-    "fuck","fck","fuuck","fvck",
-    "shit","sh1t","sht",
-    "bitch","b1tch","bytch",
-    "dick","d1ck","dik",
-    "pussy","cunt","whore","wh0re",
-    "faggot","fag","f4g",
-    "retard","ret4rd","bastard",
-    "cock","c0ck","slut",
-    "ass","a55",
-    // Vietnamese
-    "dịt","dit","đit",
-    "lồn","l0n",
-    "cặc","cac","c4c",
-    "buồi","buoi",
-    "đụ",
-    "đéo","deo",
-    "mẹ mày","me may",
-    "bố mày","bo may",
-    "con mẹ","con me",
-    "đồ chó","thằng chó",
-    "óc chó",
+    "nigger", "nigga", "niga", "n1gger", "n1gga", "negro",
+    "fuck", "fck", "fuuck", "fvck", "f*ck", "f.u.c.k", "mfer", "motherfucker", "stfu",
+    "shit", "sh1t", "sht", "sh!t", "bullshit",
+    "bitch", "b1tch", "bytch", "biatch", "sonofabitch",
+    "dick", "d1ck", "dik", "penis", "cock", "c0ck", "pecker",
+    "pussy", "cunt",
+    "bastard", "ass", "a55", "asshole", "jackass", "prick",
+	"pornhub", "porn", "p o r n", "porn hub",
+
+	// Vietnam
+    "dịt", "dit", "đit", "đm", "dm", "đcm", "dcm", "đmm", "dmm", "đjt", "djt",
+    "lồn", "l0n", "lon", "l l", "lờ", "cl", "cờ lờ", "vcl", "vclz", "vkl", "vcl",
+    "cặc", "cac", "c4c", "kẹc", "kec", "con cặc", "con cac",
+    "buồi", "buoi", "bùi", "bui", "cu", "c u",
+    "đụ", "du", "đm", "đéo", "deo", "đết", "det",
+    "mẹ mày", "me may", "mẹ m", "me m", "mmsv", "mẹ mài",
+    "bố mày", "bo may", "cha mày", "cha may", "tổ sư", "ông nội mày",
+    "con mẹ", "con me", "thằng chó", "do cho", "đồ chó", "cho de", "chó đẻ",
+    "óc chó", "oc cho", "óc vật", "súc vật", "suc vat", "ngu lìn", "ngu lon",
+    "hãm", "ham", "hãm lồn", "ham lon",
+    "đĩ", "biến thái", "bien thai",
+    "vú", "vu", "đít", "dit", "mông", "mong", "phịch", "phich", "xoạc", "nện",
+	"nứng",
 ];
 
 function filterBadWords(text) {
