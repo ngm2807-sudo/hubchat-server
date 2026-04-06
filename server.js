@@ -9,7 +9,7 @@ console.log("Hub Chat Server running on port " + port);
 // ROLE CONFIG
 // =============================
 const ADMINS = {
-    owners: ["AccphuBaeMinh"],
+    owners: ["AccphuBaeMinh", "BaeMinh2k10"],
     staffs: ["Staff_Name_1", "Staff_Name_2"],
 };
 
