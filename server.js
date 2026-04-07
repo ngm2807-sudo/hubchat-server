@@ -19,10 +19,6 @@ function getRole(username) {
     return null;
 }
 
-function canRequestHWID(username) {
-    return ADMINS.owners.includes(username) || ADMINS.staffs.includes(username);
-}
-
 // =============================
 // BAD WORDS FILTER
 // =============================
@@ -57,7 +53,7 @@ function filterBadWords(text) {
     let result = text;
     for (const word of BAD_WORDS) {
         const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(escaped, "gi");
+        const regex = new RegExp(`\\b${escaped}\\b`, "gi");
         result = result.replace(regex, "*".repeat(word.length));
     }
     return result;
@@ -67,10 +63,7 @@ function filterBadWords(text) {
 // STATE
 // =============================
 // rooms[roomId]  = [ws, ...]
-// hwidMap[roomId][username] = "hwid"
 let rooms   = {};
-let hwidMap = {};
-
 // =============================
 // BROADCAST ONLINE COUNT
 // =============================
@@ -100,14 +93,8 @@ wss.on("connection", function(ws) {
                 currentUser = msg.user || "Unknown";
 
                 if (!rooms[currentRoom])   rooms[currentRoom]   = [];
-                if (!hwidMap[currentRoom]) hwidMap[currentRoom] = {};
 
                 rooms[currentRoom].push(ws);
-
-                if (msg.hwid) {
-                    hwidMap[currentRoom][currentUser] = msg.hwid;
-                    console.log(`[HWID saved] ${currentUser} → ${msg.hwid}`);
-                }
 
                 broadcastOnline(currentRoom);
             }
@@ -129,26 +116,6 @@ wss.on("connection", function(ws) {
                 });
             }
 
-            // ---- HWID REQUEST (owner & staff) ----
-            if (msg.type === "hwid_request" && currentRoom) {
-                if (!canRequestHWID(msg.requester)) {
-                    ws.send(JSON.stringify({ type: "hwid_denied" }));
-                    console.log(`[HWID] DENIED for ${msg.requester}`);
-                    return;
-                }
-
-                const target = msg.target;
-                const hwid   = hwidMap[currentRoom]?.[target] || null;
-
-                ws.send(JSON.stringify({
-                    type:   "hwid_response",
-                    target: target,
-                    hwid:   hwid || "NOT FOUND (The user hasn't joined or the executor isn't supported.)",
-                }));
-
-                console.log(`[HWID] ${msg.requester} → ${target}: ${hwid || "NOT FOUND"}`);
-            }
-
         } catch (err) {
             console.log("Invalid message:", err.message);
         }
@@ -158,15 +125,10 @@ wss.on("connection", function(ws) {
         if (currentRoom && rooms[currentRoom]) {
             rooms[currentRoom] = rooms[currentRoom].filter(c => c !== ws);
 
-            if (currentUser && hwidMap[currentRoom]) {
-                delete hwidMap[currentRoom][currentUser];
-            }
-
             broadcastOnline(currentRoom);
 
             if (rooms[currentRoom].length === 0) {
                 delete rooms[currentRoom];
-                delete hwidMap[currentRoom];
             }
         }
     });
